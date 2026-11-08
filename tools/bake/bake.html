@@ -1,0 +1,117 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:"Lora";src:url(../../assets/fonts/Lora.ttf);font-weight:400 700}
+@font-face{font-family:"Lora";font-style:italic;src:url(../../assets/fonts/Lora-Italic.ttf);font-weight:400 700}
+@font-face{font-family:"Playfair Display";src:url(../../assets/fonts/PlayfairDisplay.ttf);font-weight:400 900}
+@font-face{font-family:"Playfair Display";font-style:italic;src:url(../../assets/fonts/PlayfairDisplay-Italic.ttf);font-weight:400 900}
+body{margin:0;background:#222}</style></head><body>
+<!-- Bakes the canvas art (art.js), the store art and the WebAudio music and
+     sound (audio.js) into the files the Go game embeds. Run: node tools/bake/bake.mjs -->
+<script src="art.js"></script>
+<script src="audio.js"></script>
+<script>
+window.bake = {};
+(async () => {
+  for (const f of ['40px "Lora"', 'italic 700 30px "Lora"', '700 40px "Playfair Display"', 'italic 700 40px "Playfair Display"']) await document.fonts.load(f);
+  const only = new URLSearchParams(location.search).get('only') || '';
+  /* ---------- images ---------- */
+  const img = {}, jpg = {};
+  for (const s of ['S', 'H', 'D', 'C']) for (let r = 1; r <= 13; r++) img['assets/cards/' + s + r] = Art.face({ s, r });
+  img['assets/cards/back'] = Art.back();
+  img['assets/mug'] = Art.mug(340);
+  img['assets/lantern'] = Art.lantern(360);
+  for (const n of [16, 32, 48, 64, 256]) img['assets/icon-' + n] = Art.icon(n);
+  img['icon-1024'] = Art.icon(1024);
+  if (only !== 'cards') {
+    jpg['assets/wood'] = Art.wood(1600, 1000);
+    const card = id => Art.face({ s: id[0], r: +id.slice(1) });
+    function fan(c, cx, by, cardW, ids, spread) {
+      const n = ids.length, order = ids.map((x, i) => i).sort((a, b) => Math.abs(b - (n - 1) / 2) - Math.abs(a - (n - 1) / 2));
+      order.forEach(i => { const k = i - (n - 1) / 2; c.save(); c.translate(cx + k * cardW * .38, by); c.rotate(k * spread * Math.PI / 180); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = cardW * .12; c.shadowOffsetY = cardW * .05; const ch = cardW * Art.CH / Art.CW; c.drawImage(card(ids[i]), -cardW / 2, -ch, cardW, ch); c.restore(); });
+    }
+    function title(c, x, y, size, txt) { c.textAlign = 'center'; c.font = `italic 800 ${size}px "Playfair Display"`; c.fillStyle = '#0f1e33'; c.fillText(txt, x, y + size * .06); c.fillStyle = '#b22a22'; c.fillText(txt, x, y); }
+    function dusk(c, W, H, sea) {   // a clear evening over the harbour
+      const g = c.createLinearGradient(0, 0, 0, sea); g.addColorStop(0, '#0e1a34'); g.addColorStop(0.55, '#3a3f74'); g.addColorStop(0.85, '#c06a5a'); g.addColorStop(1, '#f0b07a'); c.fillStyle = g; c.fillRect(0, 0, W, sea);
+      let s = 7; const R = () => (s = (s * 16807) % 2147483647) / 2147483647;
+      for (let i = 0; i < W * sea / 5000; i++) { c.fillStyle = `rgba(255,250,230,${R() * 0.7 * (1 - i / (W * sea / 5000) * 0.3)})`; c.beginPath(); c.arc(R() * W, R() * sea * 0.55, R() * 1.5, 0, 7); c.fill(); }
+      const w = c.createLinearGradient(0, sea, 0, H); w.addColorStop(0, '#3a4a70'); w.addColorStop(1, '#0c1626'); c.fillStyle = w; c.fillRect(0, sea, W, H - sea);
+      c.strokeStyle = 'rgba(240,176,122,.35)'; c.lineWidth = 2; for (let i = 0; i < W / 14; i++) { const x = R() * W, y = sea + 6 + R() * (H - sea) * 0.6; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 10 + R() * 30, y); c.stroke(); }
+    }
+    function point(c, x0, x1, sea, h) {   // the rocky point with spruce trees
+      c.fillStyle = '#121418'; c.beginPath(); c.moveTo(x0, sea + 8); c.quadraticCurveTo((x0 + x1) / 2, sea - h, x1, sea + 8); c.closePath(); c.fill();
+      let s = 3; const R = () => (s = (s * 16807) % 2147483647) / 2147483647;
+      for (let x = x0 + 20; x < x1 - 20; x += 14 + R() * 18) { const t = (x - x0) / (x1 - x0), top = sea - h * 0.5 * Math.sin(t * Math.PI) - 20 - R() * 40; c.beginPath(); c.moveTo(x, top); c.lineTo(x - 12, sea); c.lineTo(x + 12, sea); c.closePath(); c.fill(); }
+    }
+    const WD = Art.wood(1200, 900);
+    function table(c, W, y, h) {
+      c.drawImage(WD, 0, 0, 1200, 900, 0, y, W, Math.max(h, W * 0.75));
+      const v = c.createLinearGradient(0, y, 0, y + 80); v.addColorStop(0, 'rgba(0,0,0,.6)'); v.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = v; c.fillRect(0, y, W, 80);
+      c.fillStyle = '#6a4220'; c.fillRect(0, y - 6, W, 8);
+    }
+    function sill(c, x, y, w, h) {   // the cottage window frame
+      c.fillStyle = '#f2ece0'; c.fillRect(x - 18, y - 18, w + 36, 18); c.fillRect(x - 18, y + h, w + 36, 22); c.fillRect(x - 18, y, 18, h); c.fillRect(x + w, y, 18, h);
+      c.fillRect(x + w / 2 - 6, y, 12, h); c.fillRect(x, y + h / 2 - 6, w, 12);
+      c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 2; c.strokeRect(x, y, w, h);
+    }
+    { // store cover, 800x1000
+      const W = 800, H = 1000, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+      const sea = 520; dusk(c, W, H, sea); point(c, 380, 900, sea, 90); Art.lighthouse(c, 620, sea - 50, 300, { beam: true });
+      c.fillStyle = '#2a4a6a'; c.fillRect(0, 0, W, 0);
+      sill(c, 30, 40, 740, 560);
+      table(c, W, 640, 360);
+      c.fillStyle = 'rgba(255,250,238,.95)'; c.strokeStyle = '#0f1e33'; c.lineWidth = 6; c.beginPath(); c.roundRect(80, 150, 640, 230, 24); c.fill(); c.stroke();
+      c.strokeStyle = '#a8843a'; c.lineWidth = 2; c.beginPath(); c.roundRect(94, 164, 612, 202, 16); c.stroke();
+      c.fillStyle = '#4a5a6a'; c.font = '700 22px "Playfair Display"'; c.textAlign = 'center'; c.fillText("THE KEEPER'S COTTAGE · SEAL HARBOR LIGHT", W / 2, 208);
+      title(c, W / 2, 312, 120, 'Cribbage'); c.fillStyle = '#3a4a5a'; c.font = 'italic 700 32px "Lora"'; c.fillText('A Lighthouse Card Game', W / 2, 356);
+      Art.board(c, 40, 690, 420, 110, [[0, 20, '#d8402e'], [0, 15, '#d8402e'], [1, 24, '#3f86d0'], [1, 11, '#3f86d0']]);
+      c.drawImage(Art.mug(220), 560, 660, 220, 220); c.drawImage(Art.lantern(200), 20, 500, 200, 200);
+      fan(c, W / 2 + 60, H * 0.99, 220, ['H5', 'D5', 'S11', 'C5', 'S5'], 12);
+      jpg['store/cover'] = cv;
+    }
+    { // store hero, 2400x840
+      const W = 2400, H = 840, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+      const sea = 470; dusk(c, W, H, sea); point(c, 1500, 2500, sea, 110); Art.lighthouse(c, 1900, sea - 60, 360, { beam: true });
+      table(c, W, 560, 280);
+      const g = c.createLinearGradient(0, 0, W * .6, 0); g.addColorStop(0, 'rgba(8,14,28,.85)'); g.addColorStop(.7, 'rgba(8,14,28,.35)'); g.addColorStop(1, 'rgba(8,14,28,0)'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+      Art.board(c, 1280, 640, 560, 140, [[0, 22, '#d8402e'], [0, 16, '#d8402e'], [1, 27, '#3f86d0'], [1, 13, '#3f86d0']]);
+      c.drawImage(Art.mug(300), 2060, 560, 300, 300); c.drawImage(Art.lantern(320), 180, 520, 320, 320);
+      fan(c, W * 0.36, H * 1.06, 260, ['H5', 'D5', 'S11', 'C5', 'S5'], 11);
+      jpg['store/hero'] = cv;
+    }
+  }
+  bake.images = Object.fromEntries(Object.entries(img).map(([k, c]) => [k + '.png', c.toDataURL('image/png')]));
+  for (const [k, c] of Object.entries(jpg)) bake.images[k + '.jpg'] = c.toDataURL('image/jpeg', 0.9);
+  bake.images['store/icon.png'] = Art.icon(512).toDataURL('image/png');
+
+  /* ---------- audio, rendered offline ---------- */
+  const SR = 44100;
+  function wav(buf) {
+    const L = buf.getChannelData(0), Rr = buf.getChannelData(1);
+    let n = L.length; while (n > 1 && Math.abs(L[n - 1]) < 1e-4 && Math.abs(Rr[n - 1]) < 1e-4) n--;
+    const b = new DataView(new ArrayBuffer(44 + n * 4)), w = (o, s) => [...s].forEach((ch, i) => b.setUint8(o + i, ch.charCodeAt(0)));
+    w(0, 'RIFF'); b.setUint32(4, 36 + n * 4, true); w(8, 'WAVE'); w(12, 'fmt '); b.setUint32(16, 16, true); b.setUint16(20, 1, true); b.setUint16(22, 2, true);
+    b.setUint32(24, SR, true); b.setUint32(28, SR * 4, true); b.setUint16(32, 4, true); b.setUint16(34, 16, true); w(36, 'data'); b.setUint32(40, n * 4, true);
+    let peak = 0; for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(L[i]), Math.abs(Rr[i]));
+    const k = peak > 0.95 ? 0.95 / peak : 1;
+    for (let i = 0; i < n; i++) for (const [c, d] of [[0, L], [1, Rr]]) b.setInt16(44 + i * 4 + c * 2, Math.max(-1, Math.min(1, d[i] * k)) * 32767, true);
+    let s = ''; const u = new Uint8Array(b.buffer); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+    return { b64: btoa(s), peak };
+  }
+  bake.audio = {}; bake.peaks = {};
+  if (only !== 'cards') {
+    for (const [name, f] of Object.entries(Sound.fx)) {
+      const oc = new OfflineAudioContext(2, SR * 4, SR); const out = oc.createGain(); out.gain.value = 1.8; out.connect(oc.destination);
+      f(oc, out);
+      const r = wav(await oc.startRendering()); bake.audio['sfx-' + name] = r.b64; bake.peaks['sfx-' + name] = r.peak;
+    }
+    bake.tuneNames = Sound.TUNES.map(t => t.name);
+    for (let i = 0; i < Sound.TUNES.length; i++) {
+      const len = Sound.buildQueue(Sound.TUNES[i]).len;
+      const oc = new OfflineAudioContext(2, Math.ceil(SR * len), SR); const out = oc.createGain(); out.gain.value = 0.55; out.connect(oc.destination);
+      Sound.renderTune(oc, out, Sound.TUNES[i]);
+      const buf = await oc.startRendering(); buf.getChannelData(0)[buf.length - 1] = buf.getChannelData(1)[buf.length - 1] = 0.001;
+      const r = wav(buf); bake.audio['tune-' + i] = r.b64; bake.peaks['tune-' + i] = r.peak;
+    }
+  }
+  document.title = 'ready';
+})().catch(e => { document.title = 'error: ' + e.message + ' ' + e.stack; });
+</script></body></html>

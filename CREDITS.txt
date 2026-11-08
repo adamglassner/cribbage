@@ -1,0 +1,14 @@
+CRIBBAGE - A Lighthouse Card Game  (v@VERSION@)
+=============================================
+
+Developed & Published by ... Ironite
+Game Design ................ Ironite
+Card Art & Illustration .... Ironite
+Music ...................... Ironite
+  "The Keeper's Reel", "Fog on the Bay", "The Lobster Pot Jig"
+Sound Effects .............. Ironite
+Programming ................ Ironite
+Typefaces .................. Playfair Display & Lora
+                             (SIL Open Font License, see OFL.txt)
+
+Copyright (c) 2026 Ironite. All rights reserved.
